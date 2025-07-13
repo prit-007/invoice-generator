@@ -1,0 +1,111 @@
+-- ------------------------------
+-- 📄 DATABASE SCHEMA FOR INVOICE MANAGEMENT SYSTEM
+-- ------------------------------
+
+-- 🔐 Enable Row-Level Security for all tables (do this per table)
+ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
+
+-- 🧑‍💼 CUSTOMERS TABLE
+CREATE TABLE customers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  contact TEXT,
+  email TEXT,
+  phone TEXT,
+  billing_address JSONB NOT NULL,     -- {line1, line2, city, state, pincode, country}
+  shipping_address JSONB,             -- Optional
+  gst_no TEXT,                        -- GST Number if applicable
+  place_of_supply TEXT,               -- Used for tax calculation
+  payment_terms INT DEFAULT 15,       -- Days to pay invoice
+  credit_limit NUMERIC(12,2),         -- Max allowed credit
+  company_type TEXT,                  -- 'agency', 'vendor', etc.
+  notes TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);
+
+-- 📦 PRODUCTS TABLE
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  hsn_sac_code TEXT,                  -- Tax classification code
+  price NUMERIC(12,2) NOT NULL,
+  tax_rate NUMERIC(5,2) DEFAULT 18,   -- GST in percentage
+  unit TEXT DEFAULT 'NOS',
+  is_taxable BOOLEAN DEFAULT TRUE,    -- If product is taxable
+  category TEXT,                      -- Optional: Electronics, Software, etc.
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 🧾 INVOICES TABLE
+CREATE TABLE invoices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_number TEXT NOT NULL UNIQUE,      -- Human-readable number like 'RE0021'
+  customer_id UUID REFERENCES customers(id) NOT NULL,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  due_date DATE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft'
+    CHECK (status IN ('draft', 'sent', 'paid', 'partially_paid', 'overdue', 'cancelled')),
+
+  -- Financial fields
+  subtotal NUMERIC(12,2) NOT NULL,
+  tax_amount NUMERIC(12,2) NOT NULL,
+  total_amount NUMERIC(12,2) NOT NULL,
+  amount_paid NUMERIC(12,2) DEFAULT 0,
+  balance_due NUMERIC(12,2) GENERATED ALWAYS AS (total_amount - amount_paid) STORED,
+
+  -- Extra info
+  shipping_details JSONB,
+  notes TEXT,
+  terms TEXT,
+  invoice_type TEXT DEFAULT 'sales',         -- sales | maintenance
+  is_template BOOLEAN DEFAULT FALSE,         -- For reusable formats
+  cancel_reason TEXT,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 📄 INVOICE ITEMS
+CREATE TABLE invoice_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id UUID REFERENCES invoices(id) ON DELETE CASCADE NOT NULL,
+  product_id UUID REFERENCES products(id),
+  description TEXT NOT NULL,                 -- Line item text
+  quantity NUMERIC(10,2) NOT NULL,
+  unit_price NUMERIC(12,2) NOT NULL,
+  tax_rate NUMERIC(5,2) NOT NULL,
+  discount NUMERIC(12,2) DEFAULT 0,          -- Item discount
+  amount NUMERIC(12,2) GENERATED ALWAYS AS (quantity * unit_price - discount) STORED,
+  INDEX invoice_items_invoice_id_idx (invoice_id)
+);
+
+-- 💰 PAYMENTS TABLE
+CREATE TABLE payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id UUID REFERENCES invoices(id),
+  customer_id UUID REFERENCES customers(id) NOT NULL,
+  amount NUMERIC(12,2) NOT NULL,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  method TEXT NOT NULL 
+    CHECK (method IN ('cash', 'cheque', 'bank_transfer', 'upi', 'card', 'other')),
+  reference TEXT,
+  notes TEXT,
+  is_refund BOOLEAN DEFAULT FALSE,
+  is_advance BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  INDEX payments_invoice_id_idx (invoice_id),
+  INDEX payments_customer_id_idx (customer_id)
+);
+
+-- 🛠️ MAINTENANCE COSTS TABLE (OPTIONAL)
+CREATE TABLE maintenance_costs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID REFERENCES products(id),
+  cost NUMERIC(12,2) NOT NULL,
+  reason TEXT,
+  maintenance_date DATE DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
