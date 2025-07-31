@@ -5,8 +5,7 @@ import { invoicesApi, customersApi, productsApi, invoiceItemsApi, ApiError } fro
 import { logRequest } from '../utils/requestLogger';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import Input from '../components/ui/Input';
-import Textarea from '../components/ui/Textarea';
+
 import Select from '../components/ui/Select';
 import Alert from '../components/ui/Alert';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -1248,9 +1247,9 @@ const InvoiceAddEdit = () => {
                 {isEdit && formData.id && (
                     <AdditionalCharges
                         invoiceId={formData.id}
-                        onChargesUpdate={(charges) => {
+                        onChargesUpdate={() => {
                             // Update totals when charges change
-                            calculateTotals();
+                            recalculateTotals();
                         }}
                     />
                 )}

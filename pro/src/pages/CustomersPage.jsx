@@ -2,25 +2,18 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useLanguage } from '../contexts/LanguageContext';
 import { customersApi, ApiError } from '../services/api';
 import { logRequest } from '../utils/requestLogger';
-import { Link } from 'react-router-dom';
 import Table from '../components/ui/Table';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import Pagination from '../components/ui/Pagination';
-import Card from '../components/ui/Card';
 import { useToast } from '../components/ui/Toast';
 function CustomersPage() {
     const { t } = useLanguage();
-    const { toast } = useToast();
     const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('name');
     const [sortOrder, setSortOrder] = useState('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
-    const [showInactive, setShowInactive] = useState(false);
+
     // Load customers
     const loadCustomers = useCallback(async () => {
         setLoading(true);

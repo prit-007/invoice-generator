@@ -37,7 +37,7 @@ const resources = {
         selectOption: 'Select an option',
         searchAndSelect: 'Search and select',
         remove: 'Remove',
-        search: 'Search...',
+        searchPlaceholder: 'Search...',
         notifications: 'Notifications'
       },
       nav: {
@@ -80,7 +80,6 @@ const resources = {
         selectCategory: 'Select Category',
         deleteConfirm: 'Are you sure you want to delete this product?',
         deleteSuccess: 'Product deleted successfully',
-        deleteConfirm: 'Are you sure you want to delete this product?',
         saveSuccess: 'Product saved successfully',
         updateSuccess: 'Product updated successfully',
         noProducts: 'No products found',
@@ -147,7 +146,6 @@ const resources = {
         statusOverdue: 'Overdue',
         statusCancelled: 'Cancelled',
         statusPartial: 'Partially Paid',
-        statusCancelled: 'Cancelled',
         items: 'Items',
         details: 'Invoice Details',
         product: 'Product',
@@ -163,7 +161,7 @@ const resources = {
         cancelReason: 'Please provide a reason for cancellation:',
         addItem: 'Add Item',
         noItems: 'No items added to this invoice yet',
-        items: 'Invoice Items',
+        invoiceItems: 'Invoice Items',
         itemAdded: 'Item added successfully',
         itemUpdated: 'Item updated successfully',
         itemRemoved: 'Item removed successfully',
@@ -368,6 +366,7 @@ const resources = {
         selectOption: 'એક વિકલ્પ પસંદ કરો',
         searchAndSelect: 'શોધો અને પસંદ કરો',
         remove: 'દૂર કરો',
+        searchPlaceholder: 'શોધો...',
         update: 'અપડેટ કરો',
         saving: 'સેવ થઈ રહ્યું છે...',
         actions: 'ક્રિયાઓ',
@@ -423,7 +422,6 @@ const resources = {
         code: 'કોડ',
         id: 'આઇડી',
         number: 'નંબર',
-        search: 'શોધો...',
         notifications: 'સૂચનાઓ'
       },
       nav: {
@@ -546,7 +544,7 @@ const resources = {
         cancelReason: 'કૃપા કરીને રદ કરવાનું કારણ આપો:',
         addItem: 'વસ્તુ ઉમેરો',
         noItems: 'હજુ સુધી આ ઇનવોઇસમાં કોઈ વસ્તુઓ ઉમેરવામાં આવી નથી',
-        items: 'ઇનવોઇસ વસ્તુઓ',
+        invoiceItems: 'ઇનવોઇસ વસ્તુઓ',
         itemAdded: 'વસ્તુ સફળતાપૂર્વક ઉમેરવામાં આવી',
         itemUpdated: 'વસ્તુ સફળતાપૂર્વક અપડેટ થઈ',
         itemRemoved: 'વસ્તુ સફળતાપૂર્વક દૂર કરવામાં આવી',
@@ -663,8 +661,7 @@ const resources = {
         previous: 'પહેલાં',
         done: 'પૂર્ણ',
         continue: 'ચાલુ રાખો',
-        close: 'બંધ કરો',
-        search: 'શોધો...'
+        close: 'બંધ કરો'
       },
       dashboard: {
         title: 'ડેશબોર્ડ',

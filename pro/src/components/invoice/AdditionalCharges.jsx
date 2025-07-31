@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../../contexts/LanguageContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import Button from '../ui/Button';
 import Alert from '../ui/Alert';
 
 const AdditionalCharges = ({ invoiceId, onChargesUpdate }) => {
-  const { t } = useLanguage();
   const [charges, setCharges] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,7 +15,7 @@ const AdditionalCharges = ({ invoiceId, onChargesUpdate }) => {
   });
 
   // Load existing charges
-  const loadCharges = async () => {
+  const loadCharges = useCallback(async () => {
     if (!invoiceId) return;
     
     setLoading(true);
@@ -41,7 +39,7 @@ const AdditionalCharges = ({ invoiceId, onChargesUpdate }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [invoiceId, onChargesUpdate]);
 
   // Add new charge
   const handleAddCharge = async (e) => {
@@ -94,7 +92,7 @@ const AdditionalCharges = ({ invoiceId, onChargesUpdate }) => {
 
   // Delete charge
   const handleDeleteCharge = async (chargeId) => {
-    if (!confirm('Are you sure you want to delete this charge?')) {
+    if (!window.confirm('Are you sure you want to delete this charge?')) {
       return;
     }
     
