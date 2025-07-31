@@ -5,7 +5,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import traceback
 import logging
 from datetime import datetime
-from routers import customers, products, invoices, payments, invoice_items
+from routers import customers, products, invoices, payments, invoice_items, dashboard, additional_charges, company
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import docs
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -13,8 +17,65 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Invoice Management API",
-    description="A comprehensive API for managing invoices, customers, products, and payments",
-    version="1.0.0"
+    description="""
+    ## Invoice Management System API
+    
+    A comprehensive RESTful API for managing invoices, customers, products, and payments.
+    This API provides full CRUD operations for all entities and supports advanced features
+    like filtering, pagination, and comprehensive error handling.
+    
+    ### Features
+    
+    * **Customer Management**: Complete customer lifecycle management with billing/shipping addresses
+    * **Product Management**: Product catalog with inventory tracking and pricing
+    * **Invoice Management**: Create, manage, and track invoices with line items
+    * **Payment Management**: Process and track payments against invoices
+    * **Advanced Filtering**: Filter entities by various criteria
+    * **Error Handling**: Comprehensive error responses with detailed information
+    * **Validation**: Input validation with detailed error messages
+    
+    ### Authentication
+    
+    Currently, this API does not require authentication. In production environments,
+    appropriate authentication and authorization mechanisms should be implemented.
+    
+    ### Rate Limiting
+    
+    No rate limiting is currently implemented. Consider implementing rate limiting
+    for production use.
+    
+    ### Support
+    
+    For support and questions, please contact the development team.
+    """,
+    version="1.0.0",
+    terms_of_service="http://localhost:1969/terms/",
+    contact={
+        "name": "Invoice API Support Team",
+        "url": "http://localhost:1969/contact/",
+        "email": "support@invoice-api.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    docs_url="/api-docs",  # Custom docs URL
+    redoc_url="/api-redoc",  # Alternative docs URL
+    openapi_url="/api-openapi.json"  # OpenAPI schema URL
+)
+
+# Add CORS middleware
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
 # Global exception handler for validation errors
@@ -121,6 +182,15 @@ app.include_router(products.router)
 app.include_router(invoices.router)
 app.include_router(payments.router)
 app.include_router(invoice_items.router)
+app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+app.include_router(additional_charges.router, prefix="/additional-charges", tags=["additional-charges"])
+app.include_router(company.router, prefix="/company", tags=["company"])
+app.include_router(docs.router)  # Custom API documentation
+
+# Mount static files
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.get("/")
 def read_root():

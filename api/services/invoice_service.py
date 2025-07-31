@@ -3,6 +3,14 @@ from models.invoice_models import InvoiceCreateRequest, InvoiceUpdateRequest, In
 from typing import List, Optional
 import uuid
 from datetime import datetime, date, timedelta
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
+import io
+import json
 
 def get_all_invoices() -> List[InvoiceResponse]:
     query = """
@@ -66,6 +74,11 @@ def create_invoice(invoice_data: InvoiceCreateRequest) -> InvoiceResponse:
     shipping_address = invoice_data.shipping_address
     if not shipping_address and customer_result:
         shipping_address = customer_result['billing_address']
+
+    # Convert dict to JSON string for database storage
+    if isinstance(shipping_address, dict):
+        import json
+        shipping_address = json.dumps(shipping_address)
     
     # Create invoice with provided totals
     invoice_query = """
@@ -144,7 +157,12 @@ def update_invoice(invoice_id: str, invoice_data: InvoiceUpdateRequest) -> Optio
             continue  # Handle items separately
         if field == 'shipping_address':
             update_fields.append("shipping_details = %(shipping_details)s")
-            params['shipping_details'] = value
+            # Convert dict to JSON string for database storage
+            if isinstance(value, dict):
+                import json
+                params['shipping_details'] = json.dumps(value)
+            else:
+                params['shipping_details'] = value
         else:
             update_fields.append(f"{field} = %({field})s")
             params[field] = value
@@ -183,3 +201,195 @@ def cancel_invoice(invoice_id: str, reason: str = None) -> Optional[InvoiceRespo
     return get_invoice_by_id(invoice_id)
 
 # Note: No delete function - invoices should be cancelled using cancel_invoice() instead
+
+def generate_invoice_pdf(invoice_id: str) -> bytes:
+    """Generate PDF for an invoice"""
+    try:
+        # Get invoice data
+        invoice = get_invoice_by_id(invoice_id)
+        if not invoice:
+            return None
+
+        # Create PDF buffer
+        buffer = io.BytesIO()
+
+        # Create PDF document
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=18
+        )
+
+        # Get styles
+        styles = getSampleStyleSheet()
+
+        # Custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30,
+            alignment=TA_CENTER,
+            textColor=colors.HexColor('#1f2937')
+        )
+
+        header_style = ParagraphStyle(
+            'CustomHeader',
+            parent=styles['Heading2'],
+            fontSize=14,
+            spaceAfter=12,
+            textColor=colors.HexColor('#374151')
+        )
+
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=10,
+            spaceAfter=6
+        )
+
+        # Build PDF content
+        story = []
+
+        # Title
+        story.append(Paragraph("INVOICE", title_style))
+        story.append(Spacer(1, 20))
+
+        # Invoice header info
+        header_data = [
+            ['Invoice #:', invoice.invoice_number or 'N/A'],
+            ['Date:', invoice.date.strftime('%Y-%m-%d') if invoice.date else 'N/A'],
+            ['Due Date:', invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else 'N/A'],
+            ['Status:', (invoice.status or 'draft').upper()]
+        ]
+
+        header_table = Table(header_data, colWidths=[2*inch, 3*inch])
+        header_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+
+        story.append(header_table)
+        story.append(Spacer(1, 30))
+
+        # Customer information
+        story.append(Paragraph("BILL TO:", header_style))
+
+        customer_info = []
+        if hasattr(invoice, 'customer_name') and invoice.customer_name:
+            customer_info.append(invoice.customer_name)
+
+        # Add customer details if available
+        if customer_info:
+            for info in customer_info:
+                story.append(Paragraph(info, normal_style))
+        else:
+            story.append(Paragraph("Customer information not available", normal_style))
+
+        story.append(Spacer(1, 30))
+
+        # Invoice items
+        story.append(Paragraph("ITEMS:", header_style))
+
+        # Items table header
+        items_data = [['Description', 'Qty', 'Rate', 'Discount', 'Tax', 'Amount']]
+
+        # Add items
+        total_amount = 0
+        if invoice.items:
+            for item in invoice.items:
+                quantity = float(item.quantity) if item.quantity else 0
+                unit_price = float(item.unit_price) if item.unit_price else 0
+                discount = float(item.discount) if item.discount else 0
+                tax_rate = float(item.tax_rate) if item.tax_rate else 0
+
+                # Calculate line total
+                line_total = quantity * unit_price * (1 - discount / 100)
+                line_tax = line_total * (tax_rate / 100)
+                total_with_tax = line_total + line_tax
+                total_amount += total_with_tax
+
+                items_data.append([
+                    item.product_name or item.description or 'N/A',
+                    str(quantity),
+                    f"₹{unit_price:.2f}",
+                    f"{discount}%",
+                    f"{tax_rate}%",
+                    f"₹{total_with_tax:.2f}"
+                ])
+
+        # Create items table
+        items_table = Table(items_data, colWidths=[3*inch, 0.8*inch, 1*inch, 0.8*inch, 0.8*inch, 1.2*inch])
+        items_table.setStyle(TableStyle([
+            # Header row
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#374151')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 1), (0, -1), 'LEFT'),  # Description left aligned
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+
+            # Grid
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
+
+            # Alternating row colors
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+        ]))
+
+        story.append(items_table)
+        story.append(Spacer(1, 30))
+
+        # Totals section
+        totals_data = [
+            ['Subtotal:', f"₹{invoice.subtotal:.2f}" if invoice.subtotal else "₹0.00"],
+            ['Tax:', f"₹{invoice.tax_amount:.2f}" if invoice.tax_amount else "₹0.00"],
+            ['Total:', f"₹{invoice.total_amount:.2f}" if invoice.total_amount else "₹0.00"]
+        ]
+
+        if invoice.amount_paid and invoice.amount_paid > 0:
+            totals_data.append(['Paid:', f"₹{invoice.amount_paid:.2f}"])
+            balance_due = (invoice.total_amount or 0) - (invoice.amount_paid or 0)
+            totals_data.append(['Balance Due:', f"₹{balance_due:.2f}"])
+
+        totals_table = Table(totals_data, colWidths=[4*inch, 2*inch])
+        totals_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),  # Bold total row
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LINEABOVE', (0, -1), (-1, -1), 1, colors.black),  # Line above total
+        ]))
+
+        story.append(totals_table)
+        story.append(Spacer(1, 30))
+
+        # Notes and terms
+        if invoice.notes or invoice.terms:
+            if invoice.notes:
+                story.append(Paragraph("Notes:", header_style))
+                story.append(Paragraph(invoice.notes, normal_style))
+                story.append(Spacer(1, 15))
+
+            if invoice.terms:
+                story.append(Paragraph("Terms & Conditions:", header_style))
+                story.append(Paragraph(invoice.terms, normal_style))
+
+        # Build PDF
+        doc.build(story)
+
+        # Get PDF content
+        pdf_content = buffer.getvalue()
+        buffer.close()
+
+        return pdf_content
+
+    except Exception as e:
+        print(f"Error generating PDF: {e}")
+        return None
