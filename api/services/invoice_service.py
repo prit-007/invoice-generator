@@ -1,3 +1,4 @@
+from fastapi import logger
 from db.database import db
 from models.invoice_models import InvoiceCreateRequest, InvoiceUpdateRequest, InvoiceResponse, InvoiceItemWithProduct
 from typing import List, Optional
@@ -53,7 +54,7 @@ def get_invoice_by_id(invoice_id: str) -> Optional[InvoiceResponse]:
 
 def get_invoice_items_with_products(invoice_id: str) -> List[InvoiceItemWithProduct]:
     query = """
-        SELECT 
+        SELECT
             ii.*,
             p.name as product_name
         FROM invoice_items ii
@@ -62,7 +63,41 @@ def get_invoice_items_with_products(invoice_id: str) -> List[InvoiceItemWithProd
         ORDER BY ii.id
     """
     result = db.fetch_all(query, (invoice_id,))
-    return [InvoiceItemWithProduct(**row) for row in result]
+
+    # Process each item to calculate missing values
+    items = []
+    for row in result:
+        # Convert to dict for manipulation
+        item_data = dict(row)
+
+        # Calculate missing values if they're None
+        quantity = float(item_data.get('quantity', 0))
+        unit_price = float(item_data.get('unit_price', 0))
+        discount_percentage = float(item_data.get('discount_percentage', 0))
+        discount_amount = float(item_data.get('discount_amount', 0))
+        tax_rate = float(item_data.get('tax_rate', 0))
+
+        # Calculate taxable amount if missing
+        if item_data.get('taxable_amount') is None:
+            # Taxable amount = (quantity * unit_price) - discount_amount - (quantity * unit_price * discount_percentage / 100)
+            gross_amount = quantity * unit_price
+            percentage_discount = gross_amount * (discount_percentage / 100)
+            item_data['taxable_amount'] = gross_amount - discount_amount - percentage_discount
+
+        # Calculate tax amount if missing
+        if item_data.get('tax_amount') is None:
+            taxable_amount = float(item_data.get('taxable_amount', 0))
+            item_data['tax_amount'] = taxable_amount * (tax_rate / 100)
+
+        # Calculate line total if missing
+        if item_data.get('line_total') is None:
+            taxable_amount = float(item_data.get('taxable_amount', 0))
+            tax_amount = float(item_data.get('tax_amount', 0))
+            item_data['line_total'] = taxable_amount + tax_amount
+
+        items.append(InvoiceItemWithProduct(**item_data))
+
+    return items
 
 def create_invoice(invoice_data: InvoiceCreateRequest) -> InvoiceResponse:
     invoice_id = str(uuid.uuid4())
@@ -114,32 +149,53 @@ def create_invoice_item(invoice_id: str, item_data):
     # Get product details if not provided
     product_query = "SELECT name, price, tax_rate FROM products WHERE id = %s"
     product_result = db.fetch_one(product_query, (item_data.product_id,))
-    
+
     unit_price = item_data.unit_price
     tax_rate = item_data.tax_rate
     description = item_data.description
-    
+
     if product_result:
         unit_price = unit_price or product_result['price']
         tax_rate = tax_rate or product_result['tax_rate']
         description = description or product_result['name']
-    
+
+    # Calculate amounts
+    quantity = float(item_data.quantity)
+    discount = float(getattr(item_data, 'discount', 0))
+    discount_percentage = float(getattr(item_data, 'discount_percentage', 0))
+
+    # Calculate taxable amount
+    gross_amount = quantity * unit_price
+    percentage_discount = gross_amount * (discount_percentage / 100)
+    taxable_amount = gross_amount - discount - percentage_discount
+
+    # Calculate tax amount
+    tax_amount = taxable_amount * (tax_rate / 100)
+
+    # Calculate line total
+    line_total = taxable_amount + tax_amount
+
     item_query = """
         INSERT INTO invoice_items (
-            id, invoice_id, product_id, description, quantity, unit_price, tax_rate, discount
+            id, invoice_id, product_id, description, quantity, unit_price, tax_rate,
+            discount_percentage, discount_amount, taxable_amount, tax_amount, line_total
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
-    
+
     db.execute(item_query, (
         str(uuid.uuid4()),
         invoice_id,
         item_data.product_id,
         description,
-        item_data.quantity,
+        quantity,
         unit_price,
         tax_rate,
-        item_data.discount
+        discount_percentage,
+        discount,
+        taxable_amount,
+        tax_amount,
+        line_total
     ))
 
 def update_invoice(invoice_id: str, invoice_data: InvoiceUpdateRequest) -> Optional[InvoiceResponse]:
@@ -200,9 +256,18 @@ def cancel_invoice(invoice_id: str, reason: str = None) -> Optional[InvoiceRespo
     
     return get_invoice_by_id(invoice_id)
 
-# Note: No delete function - invoices should be cancelled using cancel_invoice() instead
 
 def generate_invoice_pdf(invoice_id: str) -> bytes:
+    """Generate PDF using RUBY ENTERPRISE format"""
+    try:
+        from services.ruby_pdf_generator import generate_ruby_enterprise_pdf
+        return generate_ruby_enterprise_pdf(invoice_id)
+    except Exception as e:
+        logger.error(f"Error generating RUBY ENTERPRISE PDF: {e}")
+        # Fallback to original PDF generation
+        return generate_invoice_pdf_original(invoice_id)
+
+def generate_invoice_pdf_original(invoice_id: str) -> bytes:
     """Generate PDF for an invoice"""
     try:
         # Get invoice data

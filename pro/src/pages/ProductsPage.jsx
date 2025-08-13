@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import Table from '../components/ui/Table';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import Select from '../components/ui/Select';
+
 import Pagination from '../components/ui/Pagination';
 import Card from '../components/ui/Card';
 import { useToast } from '../components/ui/Toast';
@@ -90,14 +90,7 @@ const ProductsPage = () => {
     const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
 
 
-    const handleSort = (field) => {
-        if (sortBy === field) {
-            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortBy(field);
-            setSortOrder('asc');
-        }
-    };
+
 
     const handleDelete = async (productId) => {
         if (!window.confirm(t('products.deleteConfirm'))) return;
@@ -121,10 +114,7 @@ const ProductsPage = () => {
         }).format(price);
     };
 
-    const SortIcon = ({ field }) => {
-        if (sortBy !== field) return <span className="text-gray-400">↕</span>;
-        return sortOrder === 'asc' ? <span className="text-blue-600">↑</span> : <span className="text-blue-600">↓</span>;
-    };
+
 
     if (loading) {
         return (

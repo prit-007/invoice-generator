@@ -5,7 +5,7 @@ import { invoicesApi, customersApi, productsApi, invoiceItemsApi, ApiError } fro
 import { logRequest } from '../utils/requestLogger';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-
+import {ArrowLeft} from 'lucide-react'
 import Select from '../components/ui/Select';
 import Alert from '../components/ui/Alert';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -54,29 +54,7 @@ const InvoiceAddEdit = () => {
         }
     }, []);
     
-    // Handle customer selection change
-    const handleCustomerChange = async (e) => {
-        const customerId = e.target.value;
-        
-        // Update customer_id in the form
-        handleInputChange(e);
-        
-        // If a customer is selected, try to get their billing address for shipping
-        if (customerId && !isEdit) {
-            try {
-                const customerResponse = await customersApi.getById(customerId);
-                if (customerResponse.billing_address) {
-                    setFormData(prev => ({
-                        ...prev,
-                        shipping_address: customerResponse.billing_address
-                    }));
-                }
-            } catch (err) {
-                console.error('Error loading customer details:', err);
-                // Non-critical error, so don't show to user
-            }
-        }
-    };
+
 
     // Load products
     const loadProducts = useCallback(async () => {
@@ -189,7 +167,7 @@ const InvoiceAddEdit = () => {
         } finally {
             setLoading(false);
         }
-    }, [id, t]);
+    }, [id, t, loadInvoiceItems]);
 
     useEffect(() => {
         loadCustomers();
@@ -304,9 +282,6 @@ const InvoiceAddEdit = () => {
     const handleEditItem = (item) => {
         // Set the editing item
         setEditingItem(item);
-
-        // Find the product in the products list
-        const product = products.find(p => p.id === item.product_id);
 
         // Set the form values
         setSelectedProduct(item.product_id);
@@ -456,33 +431,7 @@ const InvoiceAddEdit = () => {
         }
     };
 
-    // Update individual invoice item
-    const handleUpdateInvoiceItem = async (itemId, updatedData) => {
-        if (!isEdit) return;
 
-        try {
-            const updatedItem = await invoiceItemsApi.update(itemId, updatedData);
-
-            // Update the items in the form
-            setFormData(prev => ({
-                ...prev,
-                items: prev.items.map(item =>
-                    item.id === itemId ? updatedItem : item
-                )
-            }));
-
-            // Recalculate totals
-            const updatedItems = formData.items.map(item =>
-                item.id === itemId ? updatedItem : item
-            );
-            recalculateTotals(updatedItems);
-
-            toast.success(t('invoices.itemUpdated'));
-        } catch (err) {
-            console.error('Error updating invoice item:', err);
-            toast.error(err instanceof ApiError ? err.message : t('errors.network'));
-        }
-    };
 
     const handleRemoveItem = (index) => {
         const newItems = [...formData.items];
@@ -550,7 +499,7 @@ const InvoiceAddEdit = () => {
         {
             key: 'amount',
             title: t('invoices.total'),
-            render: (value, item) => {
+            render: (_, item) => {
                 const quantity = parseFloat(item.quantity) || 0;
                 const unitPrice = parseFloat(item.unit_price) || 0;
                 const discount = parseFloat(item.discount) || 0;
@@ -778,17 +727,45 @@ const InvoiceAddEdit = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900">
-                    {isEdit ? t('invoices.edit') : t('invoices.create')}
-                </h1>
-                <Button
-                    variant="ghost"
-                    onClick={() => navigate('/invoices')}
-                >
-                    {t('common.cancel')}
-                </Button>
+            {/* Enhanced Header */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-4">
+                        <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                            <i className="fas fa-file-invoice text-blue-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">
+                                {isEdit ? t('invoices.edit') : t('invoices.create')}
+                            </h1>
+                            {isEdit && formData.invoice_number && (
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Invoice #{formData.invoice_number}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                        <Button
+                            variant="ghost"
+                            onClick={() => navigate('/invoices')}
+                            className="text-gray-600 hover:text-gray-900"
+                        >
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            {t('common.cancel')}
+                        </Button>
+                        {isEdit && formData.id && (
+                            <Button
+                                variant="outline"
+                                onClick={() => window.open(`/invoices/${formData.id}/pdf`, '_blank')}
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            >
+                                <i className="fas fa-file-pdf mr-2"></i>
+                                View PDF
+                            </Button>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Error Message */}

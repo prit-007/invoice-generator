@@ -7,6 +7,8 @@ import { useToast } from '../components/ui/Toast';
 function CustomersPage() {
     const { t } = useLanguage();
     const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showInactive, setShowInactive] = useState(false);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('name');

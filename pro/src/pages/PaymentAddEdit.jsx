@@ -16,6 +16,10 @@ const PaymentAddEdit = () => {
     const [customers, setCustomers] = useState([]);
     const [invoices, setInvoices] = useState([]);
     const [customerInvoices, setCustomerInvoices] = useState([]);
+    const [customerSearch, setCustomerSearch] = useState('');
+    const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+    const [invoiceSearch, setInvoiceSearch] = useState('');
+    const [showInvoiceDropdown, setShowInvoiceDropdown] = useState(false);
 
     const [formData, setFormData] = useState({
         customer_id: '',
@@ -30,6 +34,51 @@ const PaymentAddEdit = () => {
     });
 
     const [errors, setErrors] = useState({});
+
+    // Filter customers based on search
+    const filteredCustomers = customers.filter(customer =>
+        customer.name.toLowerCase().includes(customerSearch.toLowerCase())
+    );
+
+    // Filter invoices based on search
+    const filteredInvoices = customerInvoices.filter(invoice =>
+        invoice.invoice_number.toLowerCase().includes(invoiceSearch.toLowerCase())
+    );
+
+    // Handle customer selection
+    const handleCustomerSelect = (customer) => {
+        setFormData(prev => ({
+            ...prev,
+            customer_id: customer.id,
+            invoice_id: '' // Reset invoice when customer changes
+        }));
+        setCustomerSearch(customer.name);
+        setShowCustomerDropdown(false);
+
+        // Load invoices for selected customer
+        loadCustomerInvoices(customer.id);
+    };
+
+    // Handle invoice selection
+    const handleInvoiceSelect = (invoice) => {
+        setFormData(prev => ({
+            ...prev,
+            invoice_id: invoice.id,
+            amount: invoice.balance_due || invoice.total_amount // Auto-fill amount
+        }));
+        setInvoiceSearch(`${invoice.invoice_number} - ₹${(invoice.balance_due || invoice.total_amount).toFixed(2)}`);
+        setShowInvoiceDropdown(false);
+    };
+
+    // Clear invoice selection
+    const clearInvoiceSelection = () => {
+        setFormData(prev => ({
+            ...prev,
+            invoice_id: '',
+            amount: ''
+        }));
+        setInvoiceSearch('');
+    };
     
     // Load customers
     const loadCustomers = useCallback(async () => {
@@ -51,6 +100,30 @@ const PaymentAddEdit = () => {
             setInvoices(filteredInvoices);
         } catch (err) {
             console.error('Error loading invoices:', err);
+        }
+    }, []);
+
+    const loadCustomerInvoices = useCallback(async (customerId) => {
+        if (!customerId) {
+            setCustomerInvoices([]);
+            return;
+        }
+
+        try {
+            // Fetch all invoices and filter for the customer
+            const response = await invoicesApi.getAll();
+            const allInvoices = Array.isArray(response) ? response : response.data || response || [];
+
+            // Filter for customer's pending/partial invoices
+            const customerInvoices = allInvoices.filter(invoice =>
+                invoice.customer_id === customerId &&
+                ['pending', 'partial', 'draft'].includes(invoice.status?.toLowerCase())
+            );
+
+            setCustomerInvoices(customerInvoices);
+        } catch (err) {
+            console.error('Error loading customer invoices:', err);
+            setCustomerInvoices([]);
         }
     }, []);
 
@@ -85,6 +158,26 @@ const PaymentAddEdit = () => {
                 is_refund: response.is_refund || false,
                 is_advance: response.is_advance || false
             });
+
+            // Set search fields for display
+            if (response.customer_id) {
+                const customer = customers.find(c => c.id === response.customer_id);
+                if (customer) {
+                    setCustomerSearch(customer.name);
+                }
+                // Load customer invoices
+                await loadCustomerInvoices(response.customer_id);
+            }
+
+            if (response.invoice_id) {
+                // Find and set invoice search after loading customer invoices
+                setTimeout(() => {
+                    const invoice = customerInvoices.find(inv => inv.id === response.invoice_id);
+                    if (invoice) {
+                        setInvoiceSearch(`${invoice.invoice_number} - ₹${(invoice.balance_due || invoice.total_amount).toFixed(2)}`);
+                    }
+                }, 100);
+            }
         } catch (err) {
             console.error('Error loading payment:', err);
             setError(err instanceof ApiError ? err.message : t('errors.network'));
@@ -109,6 +202,21 @@ const PaymentAddEdit = () => {
             loadPayment();
         }
     }, [isEdit, loadPayment, loadCustomers, loadInvoices]);
+
+    // Close dropdowns when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.dropdown-container')) {
+                setShowCustomerDropdown(false);
+                setShowInvoiceDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     // Filter invoices when customer changes
     useEffect(() => {
@@ -255,17 +363,34 @@ const PaymentAddEdit = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900">
-                    {isEdit ? t('payments.edit') : t('payments.create')}
-                </h1>
-                <button
-                    onClick={() => navigate('/payments')}
-                    className="text-gray-600 hover:text-gray-900"
-                >
-                    {t('common.cancel')}
-                </button>
+            {/* Enhanced Header */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-4">
+                        <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                            <i className="fas fa-credit-card text-green-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">
+                                {isEdit ? t('payments.edit') : t('payments.create')}
+                            </h1>
+                            {isEdit && formData.reference && (
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Reference: {formData.reference}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                        <button
+                            onClick={() => navigate('/payments')}
+                            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                            <i className="fas fa-arrow-left"></i>
+                            <span>{t('common.cancel')}</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Error Message */}
@@ -291,50 +416,140 @@ const PaymentAddEdit = () => {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Customer */}
-                            <div>
+                            <div className="relative dropdown-container">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     {t('payments.customer')}*
                                 </label>
-                                <select
-                                    name="customer_id"
-                                    value={formData.customer_id}
-                                    onChange={handleInputChange}
-                                    className={`w-full border ${errors.customer_id ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2`}
-                                    disabled={isEdit}
-                                >
-                                    <option value="">{t('common.select')}</option>
-                                    {customers.map(customer => (
-                                        <option key={customer.id} value={customer.id}>
-                                            {customer.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={customerSearch}
+                                        onChange={(e) => {
+                                            setCustomerSearch(e.target.value);
+                                            setShowCustomerDropdown(true);
+                                        }}
+                                        onFocus={() => setShowCustomerDropdown(true)}
+                                        placeholder="Search and select customer..."
+                                        className={`w-full border ${errors.customer_id ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 pr-10`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCustomerDropdown(!showCustomerDropdown)}
+                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    {showCustomerDropdown && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                            {filteredCustomers.length > 0 ? (
+                                                filteredCustomers.map(customer => (
+                                                    <button
+                                                        key={customer.id}
+                                                        type="button"
+                                                        onClick={() => handleCustomerSelect(customer)}
+                                                        className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                                    >
+                                                        <div className="font-medium">{customer.name}</div>
+                                                        {customer.email && (
+                                                            <div className="text-sm text-gray-500">{customer.email}</div>
+                                                        )}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="px-3 py-2 text-gray-500">No customers found</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                                 {errors.customer_id && (
                                     <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
                                 )}
                             </div>
 
                             {/* Invoice (optional) */}
-                            <div>
+                            <div className="relative dropdown-container">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     {t('payments.invoice')}
                                 </label>
-                                <select
-                                    name="invoice_id"
-                                    value={formData.invoice_id || ''}
-                                    onChange={handleInputChange}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                                    disabled={!formData.customer_id || isEdit}
-                                >
-                                    <option value="">{t('payments.noInvoice')}</option>
-                                    {customerInvoices.map(invoice => (
-                                        <option key={invoice.id} value={invoice.id}>
-                                            {invoice.invoice_number} - {formatAmount(invoice.balance_due || invoice.total_amount)}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={invoiceSearch}
+                                        onChange={(e) => {
+                                            setInvoiceSearch(e.target.value);
+                                            setShowInvoiceDropdown(true);
+                                        }}
+                                        onFocus={() => setShowInvoiceDropdown(true)}
+                                        placeholder={!formData.customer_id ? "Select customer first..." : "Search invoices or leave empty for advance payment..."}
+                                        disabled={!formData.customer_id}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-20"
+                                    />
+                                    <div className="absolute inset-y-0 right-0 flex items-center">
+                                        {formData.invoice_id && (
+                                            <button
+                                                type="button"
+                                                onClick={clearInvoiceSelection}
+                                                className="px-2 text-gray-400 hover:text-gray-600"
+                                                title="Clear selection"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowInvoiceDropdown(!showInvoiceDropdown)}
+                                            disabled={!formData.customer_id}
+                                            className="px-3 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    {showInvoiceDropdown && formData.customer_id && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                            {filteredInvoices.length > 0 ? (
+                                                filteredInvoices.map(invoice => (
+                                                    <button
+                                                        key={invoice.id}
+                                                        type="button"
+                                                        onClick={() => handleInvoiceSelect(invoice)}
+                                                        className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                                    >
+                                                        <div className="flex justify-between items-center">
+                                                            <div>
+                                                                <div className="font-medium">{invoice.invoice_number}</div>
+                                                                <div className="text-sm text-gray-500">
+                                                                    {new Date(invoice.date).toLocaleDateString()} • Status: {invoice.status}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="font-medium text-green-600">
+                                                                    {formatAmount(invoice.balance_due || invoice.total_amount)}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">
+                                                                    {invoice.balance_due ? 'Balance Due' : 'Total'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="px-3 py-2 text-gray-500">
+                                                    {customerInvoices.length === 0 ? "No pending invoices" : "No invoices found"}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                                 <p className="mt-1 text-xs text-gray-500">
-                                    {!formData.invoice_id ? t('payments.advancePaymentNote') : ''}
+                                    {!formData.invoice_id ? "Leave empty for advance payment" : "Payment will be applied to selected invoice"}
                                 </p>
                             </div>
 

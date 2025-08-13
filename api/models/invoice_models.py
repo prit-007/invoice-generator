@@ -33,6 +33,11 @@ class InvoiceCreateRequest(BaseModel):
     items: List[InvoiceItemRequest]
     additional_charges: Optional[List[AdditionalChargeRequest]] = []
 
+    # Calculated totals (sent from frontend)
+    subtotal: Optional[float] = 0
+    tax_amount: Optional[float] = 0
+    total_amount: Optional[float] = 0
+
     # Transport and logistics
     po_number: Optional[str] = None
     po_date: Optional[DateType] = None
@@ -73,6 +78,11 @@ class InvoiceUpdateRequest(BaseModel):
     # Items and charges
     items: Optional[List[InvoiceItemRequest]] = None
     additional_charges: Optional[List[AdditionalChargeRequest]] = None
+
+    # Calculated totals (sent from frontend)
+    subtotal: Optional[float] = None
+    tax_amount: Optional[float] = None
+    total_amount: Optional[float] = None
 
     # Transport and logistics
     po_number: Optional[str] = None
@@ -120,12 +130,12 @@ class InvoiceItemWithProduct(BaseModel):
     hsn_sac_code: Optional[str]
     quantity: float
     unit_price: float
-    discount_percentage: float
-    discount_amount: float
-    taxable_amount: float
+    discount_percentage: Optional[float] = 0.0
+    discount_amount: Optional[float] = 0.0
+    taxable_amount: Optional[float] = None
     tax_rate: float
-    tax_amount: float
-    line_total: float
+    tax_amount: Optional[float] = None
+    line_total: Optional[float] = None
 
 # Additional charges for response
 class AdditionalChargeResponse(BaseModel):

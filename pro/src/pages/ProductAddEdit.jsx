@@ -3,20 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { productsApi, ApiError } from '../services/api';
 import { logRequest } from '../utils/requestLogger';
-import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
-import Input from '../components/ui/Input';
-import Textarea from '../components/ui/Textarea';
-import Select from '../components/ui/Select';
-import Alert from '../components/ui/Alert';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+
 import { useToast } from '../components/ui/Toast';
 
 const ProductAddEdit = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { t } = useLanguage();
-    const { toast } = useToast();
+
     const isEdit = Boolean(id);
 
     const [loading, setLoading] = useState(false);
