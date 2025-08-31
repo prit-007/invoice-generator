@@ -22,7 +22,8 @@ const AdditionalCharges = ({ invoiceId, onChargesUpdate }) => {
     setError(null);
     
     try {
-      const response = await fetch(`http://127.0.0.1:1969/additional-charges/${invoiceId}`);
+  const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:1969';
+  const response = await fetch(`${apiBase}/additional-charges/${invoiceId}`);
       if (!response.ok) {
         throw new Error('Failed to load additional charges');
       }
@@ -54,7 +55,8 @@ const AdditionalCharges = ({ invoiceId, onChargesUpdate }) => {
     setError(null);
     
     try {
-      const response = await fetch('http://127.0.0.1:1969/additional-charges/', {
+  const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:1969';
+  const response = await fetch(`${apiBase}/additional-charges/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +102,8 @@ const AdditionalCharges = ({ invoiceId, onChargesUpdate }) => {
     setError(null);
     
     try {
-      const response = await fetch(`http://127.0.0.1:1969/additional-charges/${chargeId}`, {
+  const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:1969';
+  const response = await fetch(`${apiBase}/additional-charges/${chargeId}`, {
         method: 'DELETE',
       });
       

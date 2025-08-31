@@ -1,0 +1,24 @@
+# Vercel ignore file
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.pytest_cache/
+.git/
+.gitignore
+README.md
+*.md
+!VERCEL_DEPLOYMENT.md
+deploy.sh
+deploy.ps1
+.DS_Store
+Thumbs.db

@@ -4,6 +4,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { ToastProvider } from './components/ui/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './layouts/Layout';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import ProductsPage from './pages/ProductsPage';
 import ProductAddEdit from './pages/ProductAddEdit';
@@ -25,26 +26,24 @@ function App() {
         <ToastProvider>
           <Router>
             <div className="App">
-              <Layout>
               <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/products" element={<ProductsPage />} />
-                <Route path="/products/add" element={<ProductAddEdit />} />
-                <Route path="/products/edit/:id" element={<ProductAddEdit />} />
-                <Route path="/customers" element={<CustomersPage />} />
-                <Route path="/customers/add" element={<CustomerAddEdit />} />
-                <Route path="/customers/edit/:id" element={<CustomerAddEdit />} />
-                <Route path="/invoices" element={<InvoicesPage />} />
-                <Route path="/invoices/add" element={<InvoiceAddEdit />} />
-                <Route path="/invoices/edit/:id" element={<InvoiceAddEdit />} />
-                <Route path="/invoices/preview/:id" element={<InvoicePreview />} />
-                <Route path="/payments" element={<PaymentsPage />} />
-                <Route path="/payments/add" element={<PaymentAddEdit />} />
-                <Route path="/payments/edit/:id" element={<PaymentAddEdit />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+                <Route path="/products" element={<Layout><ProductsPage /></Layout>} />
+                <Route path="/products/add" element={<Layout><ProductAddEdit /></Layout>} />
+                <Route path="/products/edit/:id" element={<Layout><ProductAddEdit /></Layout>} />
+                <Route path="/customers" element={<Layout><CustomersPage /></Layout>} />
+                <Route path="/customers/add" element={<Layout><CustomerAddEdit /></Layout>} />
+                <Route path="/customers/edit/:id" element={<Layout><CustomerAddEdit /></Layout>} />
+                <Route path="/invoices" element={<Layout><InvoicesPage /></Layout>} />
+                <Route path="/invoices/add" element={<Layout><InvoiceAddEdit /></Layout>} />
+                <Route path="/invoices/edit/:id" element={<Layout><InvoiceAddEdit /></Layout>} />
+                <Route path="/invoices/preview/:id" element={<Layout><InvoicePreview /></Layout>} />
+                <Route path="/payments" element={<Layout><PaymentsPage /></Layout>} />
+                <Route path="/payments/add" element={<Layout><PaymentAddEdit /></Layout>} />
+                <Route path="/payments/edit/:id" element={<Layout><PaymentAddEdit /></Layout>} />
+                <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />
               </Routes>
-              </Layout>
             </div>
           </Router>
         </ToastProvider>

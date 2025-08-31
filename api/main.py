@@ -67,15 +67,20 @@ app = FastAPI(
 # Add CORS middleware
 origins = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000"
+    "http://127.0.0.1:3000",
+    "https://*.vercel.app",  # Allow all Vercel deployments
+    "https://localhost:3000",
+    "https://invoice-gen-chi.vercel.app",  # Production frontend
+    "https://invoice-13ejmev1t-vijayvasanigd-gmailcoms-projects.vercel.app"
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    max_age=3600,  # Cache preflight responses for 1 hour
 )
 
 # Global exception handler for validation errors
@@ -187,18 +192,54 @@ app.include_router(additional_charges.router, prefix="/additional-charges", tags
 app.include_router(company.router, prefix="/company", tags=["company"])
 app.include_router(docs.router)  # Custom API documentation
 
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+# Simple stats endpoint for testing
+@app.get("/dashboard/stats-simple")
+async def simple_dashboard_stats():
+    return {
+        "total_invoices": 25,
+        "total_customers": 12,
+        "total_products": 18,
+        "total_revenue": 45000.0,
+        "paid_revenue": 38000.0,
+        "pending_revenue": 7000.0,
+        "overdue_revenue": 0.0,
+        "invoice_status_breakdown": {
+            "paid": {"count": 20, "revenue": 38000.0},
+            "pending": {"count": 4, "revenue": 7000.0},
+            "overdue": {"count": 1, "revenue": 0.0}
+        },
+        "recent_invoices": [
+            {
+                "id": "1",
+                "invoice_number": "INV-2025-001",
+                "customer_name": "ABC Corp",
+                "total_amount": 5000.0,
+                "status": "paid",
+                "created_at": "2025-08-30T10:00:00Z"
+            }
+        ],
+        "revenue_trend": [
+            {"month": "2025-08", "revenue": 15000.0},
+            {"month": "2025-07", "revenue": 12000.0},
+            {"month": "2025-06", "revenue": 18000.0}
+        ]
+    }
+
+# Root endpoint
+@app.get("/")
+async def root():
+    return {"message": "Invoice Management API", "version": "1.0.0", "status": "running","api-docs": "/api-docs"}
+
 # Mount static files
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-@app.get("/")
-def read_root():
-    return {"message": "Invoice API is up and running"}
-
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
 
 if __name__ == "__main__":
     import uvicorn

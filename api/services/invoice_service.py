@@ -101,11 +101,11 @@ def get_invoice_items_with_products(invoice_id: str) -> List[InvoiceItemWithProd
 
 def create_invoice(invoice_data: InvoiceCreateRequest) -> InvoiceResponse:
     invoice_id = str(uuid.uuid4())
-    
+
     # Get customer details for shipping address fallback
     customer_query = "SELECT billing_address FROM customers WHERE id = %s"
     customer_result = db.fetch_one(customer_query, (invoice_data.customer_id,))
-    
+
     shipping_address = invoice_data.shipping_address
     if not shipping_address and customer_result:
         shipping_address = customer_result['billing_address']
@@ -114,8 +114,8 @@ def create_invoice(invoice_data: InvoiceCreateRequest) -> InvoiceResponse:
     if isinstance(shipping_address, dict):
         import json
         shipping_address = json.dumps(shipping_address)
-    
-    # Create invoice with provided totals
+
+    # 1) Insert invoice header first (avoid FK violation on items)
     invoice_query = """
         INSERT INTO invoices (
             id, customer_id, due_date, status, subtotal, tax_amount, total_amount,
@@ -123,26 +123,38 @@ def create_invoice(invoice_data: InvoiceCreateRequest) -> InvoiceResponse:
         )
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
-    
     db.execute(invoice_query, (
         invoice_id,
         invoice_data.customer_id,
         invoice_data.due_date or (date.today() + timedelta(days=15)),
         invoice_data.status,
-        invoice_data.subtotal,
-        invoice_data.tax_amount,
-        invoice_data.total_amount,
+        0,  # provisional subtotal
+        0,  # provisional tax
+        0,  # provisional total
         shipping_address,
         invoice_data.notes,
         invoice_data.terms,
         invoice_data.invoice_type,
         invoice_data.is_template
     ))
-    
-    # Create invoice items
+
+    # 2) Create invoice items and compute totals
+    subtotal = 0
+    tax_amount = 0
     for item in invoice_data.items:
         create_invoice_item(invoice_id, item)
-    
+
+    items = get_invoice_items_with_products(invoice_id)
+    subtotal = sum(float(item.taxable_amount or 0) for item in items)
+    tax_amount = sum(float(item.tax_amount or 0) for item in items)
+    total_amount = subtotal + tax_amount
+
+    # 3) Update totals on header
+    db.execute(
+        "UPDATE invoices SET subtotal=%s, tax_amount=%s, total_amount=%s WHERE id=%s",
+        (subtotal, tax_amount, total_amount, invoice_id)
+    )
+
     return get_invoice_by_id(invoice_id)
 
 def create_invoice_item(invoice_id: str, item_data):

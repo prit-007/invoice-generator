@@ -80,8 +80,13 @@ def generate_ruby_enterprise_pdf(invoice_id: str) -> bytes:
 
         # Define compact professional styles
         styles = getSampleStyleSheet()
-        
+
         # Compact styles for tight layout
+        # Soft professional color palette
+        soft_grey = colors.HexColor('#f1f5f9')
+        charcoal = colors.HexColor('#2c3e50')
+        blue_accent = colors.HexColor('#667eea')
+
         company_name_style = ParagraphStyle(
             'CompanyName',
             parent=styles['Normal'],
@@ -89,7 +94,8 @@ def generate_ruby_enterprise_pdf(invoice_id: str) -> bytes:
             alignment=TA_CENTER,
             fontName='Helvetica-Bold',
             spaceAfter=1,
-            spaceBefore=1
+            spaceBefore=1,
+            textColor=charcoal
         )
 
         address_style = ParagraphStyle(
@@ -97,7 +103,8 @@ def generate_ruby_enterprise_pdf(invoice_id: str) -> bytes:
             parent=styles['Normal'],
             fontSize=8,
             alignment=TA_CENTER,
-            leading=9
+            leading=9,
+            textColor=colors.grey
         )
 
         tax_invoice_style = ParagraphStyle(
@@ -107,7 +114,8 @@ def generate_ruby_enterprise_pdf(invoice_id: str) -> bytes:
             alignment=TA_CENTER,
             fontName='Helvetica-Bold',
             spaceAfter=2,
-            spaceBefore=2
+            spaceBefore=2,
+            textColor=charcoal
         )
 
         field_label_style = ParagraphStyle(
@@ -115,23 +123,26 @@ def generate_ruby_enterprise_pdf(invoice_id: str) -> bytes:
             parent=styles['Normal'],
             fontSize=7,
             fontName='Helvetica-Bold',
-            leading=8
+            leading=8,
+            textColor=colors.grey
         )
 
         field_value_style = ParagraphStyle(
             'FieldValue',
             parent=styles['Normal'],
             fontSize=7,
-            leading=8
+            leading=8,
+            textColor=charcoal
         )
 
         item_text_style = ParagraphStyle(
             'ItemText',
             parent=styles['Normal'],
             fontSize=7,
-            leading=8
+            leading=8,
+            textColor=charcoal
         )
-        
+
         # Calculate available width
         page_width = A4[0] - 24*mm
 
@@ -159,7 +170,7 @@ def generate_ruby_enterprise_pdf(invoice_id: str) -> bytes:
 
         # ===== SECTION 2: GST & PAN (with section line) =====
         gst_pan_data = [
-            [Paragraph("GST NO.: 24ADRPT0090R1ZQ", field_label_style), 
+            [Paragraph("GST NO.: 24ADRPT0090R1ZQ", field_label_style),
              Paragraph("PAN NO: ADRPT0090R", field_label_style)]
         ]
 
@@ -426,9 +437,16 @@ def generate_ruby_enterprise_pdf(invoice_id: str) -> bytes:
         tax_amount = float(invoice.tax_amount or 0)
         total_amount = float(invoice.total_amount or 0)
 
-        # Calculate GST breakdown (assuming equal CGST/SGST split for intra-state)
-        cgst_amount = tax_amount / 2
-        sgst_amount = tax_amount / 2
+        # Calculate GST breakdown (prefer stored amounts; fallback to equal split)
+        try:
+            cgst_amount = float(getattr(invoice, 'cgst_amount', None) or 0)
+            sgst_amount = float(getattr(invoice, 'sgst_amount', None) or 0)
+        except Exception:
+            cgst_amount = 0
+            sgst_amount = 0
+        if (cgst_amount + sgst_amount) <= 0 and tax_amount > 0:
+            cgst_amount = tax_amount / 2
+            sgst_amount = tax_amount / 2
 
         # Convert amount to words (simplified)
         def amount_to_words(amount):
@@ -457,7 +475,7 @@ def generate_ruby_enterprise_pdf(invoice_id: str) -> bytes:
             ],
             [
                 "", "",
-                Paragraph("TAX", field_label_style),
+                Paragraph("TOTAL TAX", field_label_style),
                 Paragraph(f"{tax_amount:.2f}", field_value_style)
             ],
             [
@@ -556,7 +574,7 @@ def generate_ruby_enterprise_pdf(invoice_id: str) -> bytes:
         buffer.close()
 
         return pdf_content
-        
+
     except Exception as e:
         logger.error(f"Error generating RUBY ENTERPRISE PDF: {e}")
         return None

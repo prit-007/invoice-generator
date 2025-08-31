@@ -1,0 +1,187 @@
+/* Stylized elderly-friendly design — soft, modern, accessible */
+:root {
+	--font-size-base: 1.1rem; /* ~18 px */
+	--font-size-lg: 1.25rem; /* ~20 px */
+	--font-size-xl: 1.5rem; /* ~24 px */
+	--line-height: 1.7;
+
+	/* Soft, welcoming palette */
+	--bg: #f8f9fa; /* warm off-white */
+	--fg: #2c3e50; /* charcoal */
+	--primary: #667eea; /* gentle lavender-blue */
+	--primary-dark: #4c63d2;
+	--secondary: #48bb78; /* mint green */
+	--danger: #e53e3e;
+
+	/* Rounded, friendly shapes */
+	--radius: 12px;
+	--shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+	--shadow-focus: 0 0 0 3px rgba(102, 126, 234, 0.35);
+
+	--space-xs: 0.5rem;
+	--space-sm: 1rem;
+	--space-md: 1.5rem;
+	--space-lg: 2rem;
+}
+
+/* Base reset */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+html {
+	scroll-behavior: smooth;
+}
+body {
+	font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+	font-size: var(--font-size-base);
+	line-height: var(--line-height);
+	color: var(--fg);
+	background: var(--bg);
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+/* Headers */
+header,
+footer {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: #fff;
+	padding: var(--space-md);
+	font-size: var(--font-size-lg);
+	text-align: center;
+}
+
+/* Buttons — pill shape, gentle shadow */
+button,
+.btn {
+	font-size: var(--font-size-lg);
+	padding: var(--space-sm) var(--space-md);
+	min-height: 48px;
+	border: none;
+	border-radius: var(--radius);
+	background: var(--primary);
+	color: #fff;
+	cursor: pointer;
+	box-shadow: var(--shadow);
+	transition: background 0.3s ease, transform 0.2s ease;
+}
+
+button:hover,
+.btn:hover {
+	background: var(--primary-dark);
+	transform: translateY(-2px);
+}
+
+button:active,
+.btn:active {
+	transform: translateY(0);
+}
+
+/* Inputs — soft border, subtle glow */
+input,
+select,
+textarea {
+	font-size: var(--font-size-lg);
+	padding: var(--space-sm) var(--space-md);
+	border: 2px solid #e2e8f0;
+	border-radius: var(--radius);
+	background: #fff;
+	transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	border-color: var(--primary);
+	box-shadow: var(--shadow-focus);
+	outline: none;
+}
+
+/* Card — soft shadow, rounded */
+.card {
+	background: #fff;
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	padding: var(--space-lg);
+	margin: var(--space-md) 0;
+}
+
+/* Table — airy rows */
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size-lg);
+}
+
+table th,
+table td {
+	padding: var(--space-sm) var(--space-md);
+	border-bottom: 1px solid #e2e8f0;
+}
+
+table th {
+	background: #f1f5f9;
+	font-weight: 600;
+}
+
+/* High-contrast mode */
+body.high-contrast {
+	--bg: #000;
+	--fg: #fff;
+	--primary: #ffff00;
+	--primary-dark: #ffcc00;
+	background: var(--bg);
+	color: var(--fg);
+}
+
+body.high-contrast button,
+body.high-contrast input,
+body.high-contrast select,
+body.high-contrast textarea {
+	background: #111;
+	color: var(--primary);
+	border-color: var(--primary);
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+	:root {
+		--font-size-base: 1.2rem;
+		--font-size-lg: 1.3rem;
+	}
+	.card {
+		padding: var(--space-md);
+	}
+}
+
+/* Navigation — pill tabs */
+nav {
+	display: flex;
+	gap: var(--space-sm);
+	justify-content: center;
+	flex-wrap: wrap;
+	padding: var(--space-md);
+	background: #fff;
+	box-shadow: var(--shadow);
+}
+
+nav a {
+	font-size: var(--font-size-lg);
+	padding: var(--space-sm) var(--space-md);
+	border-radius: var(--radius);
+	text-decoration: none;
+	color: var(--fg);
+	background: #f1f5f9;
+	transition: background 0.3s ease, color 0.3s ease;
+}
+
+nav a:hover,
+nav a.active {
+	background: var(--primary);
+	color: #fff;
+}

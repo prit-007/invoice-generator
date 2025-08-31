@@ -1,5 +1,10 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:1969';
 
+// Simple in-memory cache
+const cache = new Map();
+const cacheExpiry = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 class ApiError extends Error {
   constructor(message, status, data) {
     super(message);
@@ -28,8 +33,27 @@ const handleApiResponse = async (response) => {
   return response.json();
 };
 
+const getCacheKey = (endpoint, options) => {
+  return `${endpoint}_${JSON.stringify(options?.params || {})}`;
+};
+
+const isValidCache = (key) => {
+  const expiry = cacheExpiry.get(key);
+  return expiry && Date.now() < expiry;
+};
+
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
+  
+  // Check cache for GET requests
+  if (!options.method || options.method === 'GET') {
+    const cacheKey = getCacheKey(endpoint, options);
+    if (cache.has(cacheKey) && isValidCache(cacheKey)) {
+      console.log(`Cache hit for ${endpoint}`);
+      return cache.get(cacheKey);
+    }
+  }
+  
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -40,13 +64,37 @@ const apiRequest = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(url, config);
-    return await handleApiResponse(response);
+    const data = await handleApiResponse(response);
+    
+    // Cache GET requests
+    if (!options.method || options.method === 'GET') {
+      const cacheKey = getCacheKey(endpoint, options);
+      cache.set(cacheKey, data);
+      cacheExpiry.set(cacheKey, Date.now() + CACHE_DURATION);
+    }
+    
+    return data;
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
     }
     throw new ApiError('Network error occurred', 0, { originalError: error });
   }
+};
+
+// Cache invalidation helper
+const invalidateCache = (pattern) => {
+  for (const key of cache.keys()) {
+    if (key.includes(pattern)) {
+      cache.delete(key);
+      cacheExpiry.delete(key);
+    }
+  }
+};
+export const dashboardApi = {
+  // Get dashboard statistics (using simple endpoint temporarily)
+  getStats: () => apiRequest('/dashboard/stats-simple'),
+
 };
 
 // Products API

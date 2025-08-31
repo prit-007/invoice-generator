@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 
 # Request models
 class ProductCreateRequest(BaseModel):
@@ -25,7 +26,7 @@ class ProductUpdateRequest(BaseModel):
 
 # Response models
 class ProductResponse(BaseModel):
-    id: str
+    id: UUID
     name: str
     description: Optional[str]
     hsn_sac_code: Optional[str]

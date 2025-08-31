@@ -1,23 +1,37 @@
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
+from typing import Dict, Any, List
 from pydantic import BaseModel
 from services.dashboard_service import get_dashboard_stats
 
 router = APIRouter()
 
+class InvoiceStatusBreakdown(BaseModel):
+    count: int
+    revenue: float
+
+class RecentInvoice(BaseModel):
+    id: str
+    invoice_number: str
+    customer_name: str
+    total_amount: float
+    status: str
+    created_at: str
+
+class RevenueTrend(BaseModel):
+    month: str
+    revenue: float
+
 class DashboardStats(BaseModel):
     total_invoices: int
-    pending_invoices: int
-    paid_invoices: int
-    overdue_invoices: int
-    total_revenue: float
-    pending_revenue: float
     total_customers: int
-    active_customers: int
     total_products: int
-    low_stock_products: int
-    recent_invoices: list
-    revenue_trend: list
+    total_revenue: float
+    paid_revenue: float
+    pending_revenue: float
+    overdue_revenue: float
+    invoice_status_breakdown: Dict[str, InvoiceStatusBreakdown]
+    recent_invoices: List[RecentInvoice]
+    revenue_trend: List[RevenueTrend]
 
 @router.get(
     "/stats", 

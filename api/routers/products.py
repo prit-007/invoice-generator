@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 from services.product_service import (
     get_all_products,
+    search_products,
     get_all_products_including_inactive,
     get_product_by_id,
     create_product,
@@ -21,42 +22,41 @@ router = APIRouter(
 )
 
 @router.get(
-    "/", 
+    "/",
     response_model=List[ProductResponse],
     summary="Get all active products",
     description="""
     Retrieve a list of all active products in the inventory.
-    
+
     This endpoint returns only products with `is_active = true`.
     Use `/products/all` to include inactive products.
-    
+
+    Optionally filter using `?search=` to match on name, description, or category.
+
     **Returns:**
-    - List of product objects with complete information including pricing and inventory
+    - List of product objects
     - Empty list if no active products exist
-    
-    **Use cases:**
-    - Product catalog display
-    - Inventory management
-    - Sales order creation
     """
 )
-async def get_products():
-    """Get all active products"""
+async def get_products(search: Optional[str] = Query(default=None, description="Search by name/description/category")):
+    """Get all active products or search by term"""
     try:
+        if search:
+            return search_products(search)
         return get_all_products()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get(
-    "/all", 
+    "/all",
     response_model=List[ProductResponse],
     summary="Get all products (including inactive)",
     description="""
     Retrieve a list of all products in the system, including inactive ones.
-    
+
     This endpoint returns products regardless of their `is_active` status.
     Useful for administrative purposes and historical data analysis.
-    
+
     **Returns:**
     - List of all product objects with complete information
     - Empty list if no products exist
@@ -70,22 +70,21 @@ async def get_all_products_endpoint():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get(
-    "/{product_id}", 
+    "/{product_id}",
     response_model=ProductResponse,
     summary="Get product by ID",
     description="""
     Retrieve a specific product by its unique ID.
-    
+
     **Parameters:**
     - `product_id`: UUID of the product to retrieve
-    
+
     **Returns:**
     - Product object with complete information including:
-      - Basic details (name, description, SKU)
-      - Pricing information (price, cost_price, tax_rate)
-      - Inventory data (stock_quantity, min_stock_level)
+      - Basic details (name, description)
+      - Pricing information (price, tax_rate)
       - Metadata (timestamps, active status)
-    
+
     **Errors:**
     - 404: Product with the specified ID does not exist
     - 422: Invalid UUID format
@@ -104,35 +103,26 @@ async def get_product(product_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post(
-    "/", 
+    "/",
     response_model=ProductResponse,
     status_code=201,
     summary="Create a new product",
     description="""
     Create a new product in the inventory system.
-    
+
     **Required fields:**
     - `name`: Product name (string)
     - `price`: Selling price (decimal, > 0)
-    - `sku`: Stock Keeping Unit (unique identifier)
-    
+
     **Optional fields:**
     - `description`: Product description
     - `category`: Product category
-    - `cost_price`: Cost price for margin calculation
     - `tax_rate`: Tax rate percentage (default: 0)
-    - `stock_quantity`: Current stock quantity (default: 0)
-    - `min_stock_level`: Minimum stock level for alerts
-    - `unit`: Unit of measurement (default: 'pcs')
-    - `is_active`: Active status (default: true)
-    
+    - `unit`: Unit of measurement (default: 'NOS')
+    - `is_taxable`: Whether product is taxable (default: true)
+
     **Returns:**
     - Created product object with assigned ID and timestamps
-    
-    **Business Rules:**
-    - SKU must be unique across all products
-    - Price must be greater than 0
-    - Stock quantities cannot be negative
     """
 )
 async def create_new_product(product_data: ProductCreateRequest):
@@ -143,31 +133,25 @@ async def create_new_product(product_data: ProductCreateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put(
-    "/{product_id}", 
+    "/{product_id}",
     response_model=ProductResponse,
     summary="Update an existing product",
     description="""
     Update an existing product's information.
-    
+
     **Parameters:**
     - `product_id`: UUID of the product to update
-    
+
     **Request body:**
     - All fields are optional for updates
     - Only provided fields will be updated
-    - Null values will clear the field (except required fields)
-    
+
     **Returns:**
     - Updated product object with new information
-    
+
     **Errors:**
     - 404: Product with the specified ID does not exist
     - 422: Invalid data format or validation errors
-    
-    **Business Rules:**
-    - SKU must remain unique if changed
-    - Price must be greater than 0 if provided
-    - Stock quantities cannot be negative
     """
 )
 async def update_existing_product(product_id: str, product_data: ProductUpdateRequest):
@@ -187,20 +171,20 @@ async def update_existing_product(product_id: str, product_data: ProductUpdateRe
     summary="Deactivate a product",
     description="""
     Soft delete a product by setting its status to inactive.
-    
+
     This operation does not permanently delete the product record,
     but sets `is_active = false`. The product data is preserved
     for historical purposes, reporting, and existing invoice references.
-    
+
     **Parameters:**
     - `product_id`: UUID of the product to deactivate
-    
+
     **Returns:**
     - Success message confirming deactivation
-    
+
     **Errors:**
     - 404: Product with the specified ID does not exist
-    
+
     **Important Notes:**
     - Deactivated products will not appear in active product listings
     - Existing invoices referencing this product remain unaffected
