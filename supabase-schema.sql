@@ -8,6 +8,55 @@ ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 -- Create sequence for invoice numbers
 CREATE SEQUENCE invoice_number_seq START 1;
 
+-- 🏢 COMPANY SETTINGS TABLE
+CREATE TABLE public.company_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_name TEXT NOT NULL,
+  address_line1 TEXT NOT NULL,
+  address_line2 TEXT,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  postal_code TEXT NOT NULL,
+  country TEXT NOT NULL DEFAULT 'INDIA',
+  phone TEXT,
+  email TEXT,
+  website TEXT,
+  gst_number TEXT,
+  pan_number TEXT,
+  bank_name TEXT,
+  bank_account_name TEXT,
+  bank_account_number TEXT,
+  bank_ifsc_code TEXT,
+  terms_and_conditions TEXT,
+  authorized_signatory TEXT,
+  logo_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Insert default company settings
+INSERT INTO public.company_settings (
+  company_name, address_line1, address_line2, city, state, postal_code,
+  phone, gst_number, pan_number, bank_name, bank_account_name,
+  bank_account_number, bank_ifsc_code, terms_and_conditions, authorized_signatory
+) VALUES (
+  'RUBY ENTERPRISE',
+  'SHOP-2, SURVEY NO. 35/2, PLOT NO-7, RUBY ENTERPRISE,',
+  'B/H TULIP PARTY PLOT, NR POONAM DUMPER,N.H 8-B,',
+  'VAVDI, RAJKOT',
+  'GUJARAT',
+  '360004',
+  '+91 94272 53431',
+  '24ADRPT0090R1ZQ',
+  'ADRPT0090R',
+  'HDFC Bank Ltd.',
+  'RUBY ENTERPRISE',
+  '50200082252861',
+  'HDFC0009028',
+  '1) "SUBJECT TO "RAJKOT"JURIDICTION ONLY. E.& O.E"',
+  'RUBY ENTERPRISE'
+);
+
 -- 🧑‍💼 CUSTOMERS TABLE
 CREATE TABLE public.customers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -61,12 +110,42 @@ CREATE TABLE public.invoices (
   due_date DATE NOT NULL,
   status TEXT NOT NULL DEFAULT 'draft'
     CHECK (status IN ('draft', 'sent', 'paid', 'partially_paid', 'overdue', 'cancelled')),
+
+  -- Basic amounts
   subtotal NUMERIC(12,2) NOT NULL,
   tax_amount NUMERIC(12,2) NOT NULL,
   total_amount NUMERIC(12,2) NOT NULL,
   amount_paid NUMERIC(12,2) DEFAULT 0,
   balance_due NUMERIC(12,2) GENERATED ALWAYS AS (total_amount - amount_paid) STORED,
+
+  -- Transport and logistics details
+  po_number TEXT,
+  po_date DATE,
+  transport_name TEXT,
+  lr_number TEXT,
+  vehicle_number TEXT,
+  eway_bill_number TEXT,
+  eway_bill_date DATE,
+  total_quantity NUMERIC(10,2),
+
+  -- GST breakdown
+  cgst_rate NUMERIC(5,2) DEFAULT 0,
+  sgst_rate NUMERIC(5,2) DEFAULT 0,
+  igst_rate NUMERIC(5,2) DEFAULT 0,
+  cgst_amount NUMERIC(12,2) DEFAULT 0,
+  sgst_amount NUMERIC(12,2) DEFAULT 0,
+  igst_amount NUMERIC(12,2) DEFAULT 0,
+  round_off NUMERIC(12,2) DEFAULT 0,
+
+  -- Additional charges
+  packaging_forwarding NUMERIC(12,2) DEFAULT 0,
+  other_charges JSONB, -- For flexible additional charges
+
+  -- Address details
   shipping_details JSONB,
+  place_of_supply TEXT,
+
+  -- Standard fields
   notes TEXT,
   terms TEXT,
   invoice_type TEXT DEFAULT 'sales',
@@ -87,16 +166,37 @@ CREATE TABLE public.invoice_items (
   invoice_id UUID REFERENCES public.invoices(id) ON DELETE CASCADE NOT NULL,
   product_id UUID REFERENCES public.products(id),
   description TEXT NOT NULL,
+  hsn_sac_code TEXT,
   quantity NUMERIC(10,2) NOT NULL,
   unit_price NUMERIC(12,2) NOT NULL,
   tax_rate NUMERIC(5,2) NOT NULL,
-  discount NUMERIC(12,2) DEFAULT 0,
-  amount NUMERIC(12,2) GENERATED ALWAYS AS (quantity * unit_price - discount) STORED
+  discount_percentage NUMERIC(5,2) DEFAULT 0,
+  discount_amount NUMERIC(12,2) DEFAULT 0,
+  taxable_amount NUMERIC(12,2) NOT NULL,
+  tax_amount NUMERIC(12,2) NOT NULL,
+  line_total NUMERIC(12,2) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Create index for invoice items
 CREATE INDEX idx_invoice_items_invoice ON public.invoice_items (invoice_id);
 CREATE INDEX idx_invoice_items_product ON public.invoice_items (product_id);
+
+-- 💰 ADDITIONAL CHARGES TABLE
+CREATE TABLE public.additional_charges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id UUID REFERENCES public.invoices(id) ON DELETE CASCADE NOT NULL,
+  charge_name TEXT NOT NULL,
+  charge_amount NUMERIC(12,2) NOT NULL,
+  is_taxable BOOLEAN DEFAULT FALSE,
+  tax_rate NUMERIC(5,2) DEFAULT 0,
+  tax_amount NUMERIC(12,2) DEFAULT 0,
+  total_amount NUMERIC(12,2) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create index for additional charges
+CREATE INDEX idx_additional_charges_invoice ON public.additional_charges (invoice_id);
 
 -- 💰 PAYMENTS TABLE
 CREATE TABLE public.payments (

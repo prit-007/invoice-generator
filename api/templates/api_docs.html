@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invoice Management API Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #2c3e50;
+        }
+        .endpoint {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .method {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .get { color: #3498db; }
+        .post { color: #27ae60; }
+        .put { color: #f39c12; }
+        .delete { color: #e74c3c; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .example {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .error {
+            background-color: #fdedec;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #e74c3c;
+        }
+        .note {
+            background-color: #eafaf1;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border-left: 4px solid #27ae60;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ docs.overview.title }} v{{ docs.overview.version }}</h1>
+    <p>{{ docs.overview.description }}</p>
+    
+    <div class="note">
+        <p>For interactive API documentation with request builders and live examples, visit:</p>
+        <ul>
+            <li><a href="/api-docs">Swagger UI Documentation</a></li>
+            <li><a href="/api-redoc">ReDoc Documentation</a></li>
+            <li><a href="/api-openapi.json">OpenAPI JSON Schema</a></li>
+        </ul>
+    </div>
+    
+    <h2>Authentication</h2>
+    <p>{{ docs.authentication.description }}</p>
+    <pre><code>{{ docs.authentication.examples.api_key }}</code></pre>
+    <pre><code>{{ docs.authentication.examples.oauth2 }}</code></pre>
+    
+    <h2>API Resources</h2>
+    {% for resource in docs.resources %}
+    <h3>{{ resource.name }}</h3>
+    <p>{{ resource.description }}</p>
+    <table>
+        <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+        </tr>
+        {% for endpoint in resource.endpoints %}
+        <tr>
+            <td class="method {{ endpoint.method|lower }}">{{ endpoint.method }}</td>
+            <td><code>{{ endpoint.path }}</code></td>
+            <td>{{ endpoint.description }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endfor %}
+    
+    <h2>Examples</h2>
+    {% for example_key, example in docs.examples.items() %}
+    <div class="example">
+        <h3>{{ example.title }}</h3>
+        <h4>Request</h4>
+        <p><strong>{{ example.request.method }}</strong> <code>{{ example.request.endpoint }}</code></p>
+        <pre><code>{{ example.request.body|tojson(indent=2) }}</code></pre>
+        
+        <h4>Response</h4>
+        <p><strong>Status:</strong> {{ example.response.status }}</p>
+        <pre><code>{{ example.response.body|tojson(indent=2) }}</code></pre>
+    </div>
+    {% endfor %}
+    
+    <h2>Error Codes</h2>
+    {% for error in docs.errors %}
+    <div class="error">
+        <h3>{{ error.code }} - {{ error.title }}</h3>
+        <p>{{ error.description }}</p>
+    </div>
+    {% endfor %}
+    
+    <h2>Best Practices</h2>
+    <ul>
+        {% for practice in docs.best_practices %}
+        <li>
+            <strong>{{ practice.title }}</strong>: {{ practice.description }}
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

@@ -1,0 +1,108 @@
+/* Custom styles for API documentation */
+.api-docs-header {
+    background-color: #f8f9fa;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    border-left: 5px solid #3498db;
+}
+
+.api-docs-logo {
+    max-height: 50px;
+    margin-right: 20px;
+}
+
+.api-docs-footer {
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+    text-align: center;
+    color: #777;
+}
+
+.api-version-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    background-color: #3498db;
+    color: white;
+    border-radius: 20px;
+    font-size: 0.8em;
+    margin-left: 10px;
+}
+
+.copy-button {
+    float: right;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 5px 10px;
+    font-size: 0.8em;
+    cursor: pointer;
+}
+
+.copy-button:hover {
+    background-color: #e9ecef;
+}
+
+.api-section-nav {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 15px;
+}
+
+.api-section-nav ul {
+    list-style-type: none;
+    padding-left: 15px;
+}
+
+.api-section-nav li {
+    margin-bottom: 10px;
+}
+
+.api-section-nav a {
+    text-decoration: none;
+    color: #3498db;
+}
+
+.api-section-nav a:hover {
+    text-decoration: underline;
+}
+
+@media print {
+    .api-section-nav {
+        display: none;
+    }
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+    body.dark-mode {
+        background-color: #1a1a1a;
+        color: #f0f0f0;
+    }
+    
+    body.dark-mode h1,
+    body.dark-mode h2,
+    body.dark-mode h3 {
+        color: #3498db;
+    }
+    
+    body.dark-mode .endpoint,
+    body.dark-mode pre,
+    body.dark-mode .example {
+        background-color: #2d2d2d;
+        border-color: #3498db;
+    }
+    
+    body.dark-mode th {
+        background-color: #2d2d2d;
+    }
+    
+    body.dark-mode td {
+        border-bottom-color: #444;
+    }
+}
